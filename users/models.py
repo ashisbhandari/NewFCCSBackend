@@ -4,7 +4,8 @@ from django.db import models
 
 # add users table
 class User(models.Model):
-    userID = models.CharField(max_length=20, primary_key=True, editable=False, unique=True)
+    id = models.AutoField(primary_key=True)
+    userID = models.CharField(max_length=20, editable=False, unique=True)
     companyName = models.CharField(max_length=255)
     ownerName = models.CharField(max_length=150, unique=True)
     email = models.EmailField(unique=True)

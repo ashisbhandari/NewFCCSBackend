@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
 from .models import User
+from rest_framework_simplejwt.tokens import RefreshToken
 
 # Create your views here.
 
@@ -70,11 +71,18 @@ def user_login(request):
             # Authenticate user
             try:
                 user = User.objects.get(email=email, password=password)
+                
+                # Generate JWT tokens
+                refresh = RefreshToken.for_user(user)
+                
                 return JsonResponse({
                     'status': 'success',
                     'message': 'Login successful',
                     'userID': user.userID,
-                    'email': user.email
+                    'email': user.email,
+                    "is_staff": user.is_staff,
+                    'access': str(refresh.access_token),
+                    'refresh': str(refresh)
                 }, status=200)
             except User.DoesNotExist:
                 return JsonResponse({

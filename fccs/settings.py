@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'users',
+    'rest_framework',
+    'rest_framework_simplejwt',
 ]
 
 MIDDLEWARE = [
@@ -66,6 +68,23 @@ TEMPLATES = [
         },
     },
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
+# JWT Configuration
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # Access token expires in 5 minutes
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),    # Refresh token expires in 1 day
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+}
+
 
 WSGI_APPLICATION = 'fccs.wsgi.application'
 
