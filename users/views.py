@@ -58,28 +58,28 @@ def add_user(request):
         'message': 'Only POST method is allowed'
     }, status=405)
     
-# admin login
+#user login view
 @csrf_exempt
-def admin_login(request):
+def user_login(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            ownerName = data.get('ownerName')
             email = data.get('email')
+            password = data.get('password')
             
-            # Check if user exists and is staff
+            # Authenticate user
             try:
-                user = User.objects.get(ownerName=ownerName, email=email, is_staff=True)
+                user = User.objects.get(email=email, password=password)
                 return JsonResponse({
                     'status': 'success',
-                    'message': 'Admin login successful',
-                    'user_id': user.id,
-                    'ownerName': user.ownerName
+                    'message': 'Login successful',
+                    'userID': user.userID,
+                    'email': user.email
                 }, status=200)
             except User.DoesNotExist:
                 return JsonResponse({
                     'status': 'error',
-                    'message': 'Invalid credentials or not an admin'
+                    'message': 'Invalid credentials'
                 }, status=401)
                 
         except Exception as e:
@@ -92,4 +92,3 @@ def admin_login(request):
         'status': 'error',
         'message': 'Only POST method is allowed'
     }, status=405)
-    
