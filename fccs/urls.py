@@ -23,6 +23,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.home, name='home'),
     path('user/', include('users.urls')),
-    path('/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('product/', include('products.urls')),
+    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
