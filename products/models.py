@@ -41,6 +41,8 @@ class Shipment(models.Model):
 
     def __str__(self):
         return self.product_id
+    class Meta:
+        db_table = 'shipments'
 
 
 class Sender(models.Model):
