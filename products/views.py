@@ -40,7 +40,7 @@ def add_Product(request):
     )
     
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+# @permission_classes([IsAuthenticated])
 def View_Product(request):
     shipments = Shipment.objects.all()
     for s in shipments:
