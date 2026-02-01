@@ -2,9 +2,9 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
 from .models import User
-from rest_framework_simplejwt.tokens import RefreshToken
+from .serializers import get_tokens_for_user
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated,IsAdminUser
+from rest_framework.permissions import IsAuthenticated,IsAdminUser,AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -19,8 +19,13 @@ def user_dashboard(request):
     }
     return JsonResponse(data)
 
+
+
+# admin task in user app
+# *------------------------------------------------------------*
 # add user by admin
 @csrf_exempt
+@permission_classes([IsAdminUser])
 def add_user(request):
     if request.method == 'POST':
         try:
@@ -65,58 +70,8 @@ def add_user(request):
         'message': 'Only POST method is allowed'
     }, status=405)
     
-#user login view
-@csrf_exempt
-def user_login(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            email = data.get('email')
-            password = data.get('password')
-            
-            # Authenticate user
-            try:
-                user = User.objects.get(email=email)
-                
-                # Verify password against hashed password
-                if user.check_password(password):
-                    # Generate JWT tokens
-                    refresh = RefreshToken.for_user(user)
-                    
-                    return JsonResponse({
-                        'status': 'success',
-                        'message': 'Login successful',
-                        'userID': user.userID,
-                        'email': user.email,
-                        "is_staff": user.is_staff,
-                        'access': str(refresh.access_token),
-                        'refresh': str(refresh)
-                    }, status=200)
-                else:
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': 'Invalid credentials'
-                    }, status=401)
-            except User.DoesNotExist:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Invalid credentials'
-                }, status=401)
-                
-        except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e)
-            }, status=400)
-    
-    return JsonResponse({
-        'status': 'error',
-        'message': 'Only POST method is allowed'
-    }, status=405)
-    
-    
+       # helps to get all user data  by admin only 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
 def user_details(request):
     # Get all users from database
     users = User.objects.all()
@@ -148,3 +103,56 @@ def user_details(request):
         'users': users_list
     }, status=status.HTTP_200_OK)
         
+    
+#user login view
+@csrf_exempt
+def user_login(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            email = data.get('email')
+            password = data.get('password')
+            
+            # Authenticate user
+            try:
+                user = User.objects.get(email=email)
+                
+                # Verify password against hashed password
+                if user.check_password(password):
+                    # Generate JWT tokens with custom claims
+                    tokens = get_tokens_for_user(user)
+                    
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': 'Login successful',
+                        'userID': user.userID,
+                        'email': user.email,
+                        "is_staff": user.is_staff,
+                        'access': tokens['access'],
+                        'refresh': tokens['refresh']
+                    }, status=200)
+                else:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Invalid credentials'
+                    }, status=401)
+            except User.DoesNotExist:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Invalid credentials'
+                }, status=401)
+                
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
+    
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Only POST method is allowed'
+    }, status=405)
+    
+    
+    
+ 
