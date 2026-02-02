@@ -155,4 +155,39 @@ def user_login(request):
     
     
     
- 
+# users data using user id 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_details(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+
+        user_data = {
+            'id': user.id,
+            'userID': user.userID,
+            'companyName': user.companyName,
+            'ownerName': user.ownerName,
+            'email': user.email,
+            'country': user.country,
+            'zipcode': user.zipcode,
+            'state': user.state,
+            'city': user.city,
+            'address1': user.address1,
+            'address2': user.address2,
+            'contact1': user.contact1,
+            'contact2': user.contact2,
+            'is_staff': user.is_staff,
+            'is_active': user.is_active,
+            'date_joined': user.date_joined.strftime('%Y-%m-%d %H:%M:%S'),
+        }
+
+        return Response({
+            'status': 'success',
+            'user': user_data
+        }, status=status.HTTP_200_OK)
+
+    except User.DoesNotExist:
+        return Response({
+            'status': 'error',
+            'message': 'User not found'
+        }, status=status.HTTP_404_NOT_FOUND)
