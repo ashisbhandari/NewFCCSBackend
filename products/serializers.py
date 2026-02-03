@@ -27,7 +27,8 @@ class ShipmentSerializer(serializers.ModelSerializer):
     receiver = ReceiverSerializer()
     pieces_detail = ShipmentPieceSerializer(many=True)
     product_id = serializers.CharField(required=False, read_only=True)
-    user = serializers.StringRelatedField(read_only=True)
+    user = serializers.CharField(source='user.companyName', read_only=True)
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
     origin = serializers.CharField(required=False, read_only=True)
 
     class Meta:

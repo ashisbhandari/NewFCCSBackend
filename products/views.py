@@ -4,7 +4,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from .serializers import ShipmentSerializer
 from .models import Shipment
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 
 
 # Create your views here.
@@ -38,10 +39,16 @@ def add_Product(request):
         status=status.HTTP_405_METHOD_NOT_ALLOWED
     )
 
-# view all product details
+# view all product details (admin) or user-specific products
+@permission_classes([IsAuthenticated])
 @api_view(['GET'])
 def View_Product(request):
-    shipments = Shipment.objects.all()
+    # If admin/staff, show all records; otherwise show user's records
+    if request.user.is_staff:
+        shipments = Shipment.objects.all()
+    else:
+        shipments = Shipment.objects.filter(user_id=request.user.id)
+    
     serializer = ShipmentSerializer(shipments, many=True)
     return Response(serializer.data)
 
