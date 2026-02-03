@@ -27,6 +27,8 @@ class ShipmentSerializer(serializers.ModelSerializer):
     receiver = ReceiverSerializer()
     pieces_detail = ShipmentPieceSerializer(many=True)
     product_id = serializers.CharField(required=False, read_only=True)
+    user = serializers.StringRelatedField(read_only=True)
+    origin = serializers.CharField(required=False, read_only=True)
 
     class Meta:
         model = Shipment
@@ -37,6 +39,17 @@ class ShipmentSerializer(serializers.ModelSerializer):
         receiver_data = validated_data.pop('receiver')
         pieces_data = validated_data.pop('pieces_detail')
 
+        # Automatically set the user from the request context
+        request = self.context.get('request')
+        if request and request.user:
+            validated_data['user'] = request.user
+            # Automatically set user_id_custom from user's userID
+            if hasattr(request.user, 'userID') and request.user.userID:
+                validated_data['user_id_custom'] = request.user.userID
+            # Automatically set origin from user's city
+            if hasattr(request.user, 'city') and request.user.city:
+                validated_data['origin'] = request.user.city
+
         if not validated_data.get('product_id'):
             validated_data['product_id'] = f"TEMP-{uuid.uuid4().hex[:12]}"
 
@@ -44,7 +57,7 @@ class ShipmentSerializer(serializers.ModelSerializer):
 
         if shipment.product_id.startswith("TEMP-"):
             base_number = 1000
-            shipment.product_id = f"FCCS-{base_number + shipment.id}"
+            shipment.product_id = f"FCCS {base_number + shipment.id}"
             shipment.save(update_fields=["product_id"])
 
         Sender.objects.create(shipment=shipment, **sender_data)

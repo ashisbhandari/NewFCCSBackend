@@ -1,4 +1,5 @@
 from django.db import models
+from users.models import User
 
 
 class Shipment(models.Model):
@@ -26,6 +27,7 @@ class Shipment(models.Model):
 
     packet_type = models.CharField(max_length=20, choices=PACKET_TYPES)
     destination_district = models.CharField(max_length=100)
+    origin = models.CharField(max_length=100, null=True, blank=True)
 
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS)
     service_type = models.CharField(max_length=30, choices=SERVICE_TYPES)
@@ -36,6 +38,8 @@ class Shipment(models.Model):
 
     description = models.TextField(blank=True, null=True)
     booked_by = models.CharField(max_length=100)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='shipments', null=True, blank=True)
+    user_id_custom = models.CharField(max_length=20, null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 

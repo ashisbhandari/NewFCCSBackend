@@ -14,7 +14,7 @@ from rest_framework.decorators import api_view
 
 def add_Product(request):
     if request.method == 'POST':
-        serializer = ShipmentSerializer(data=request.data)
+        serializer = ShipmentSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(
@@ -38,9 +38,25 @@ def add_Product(request):
         status=status.HTTP_405_METHOD_NOT_ALLOWED
     )
 
-
+# view all product details
 @api_view(['GET'])
 def View_Product(request):
     shipments = Shipment.objects.all()
     serializer = ShipmentSerializer(shipments, many=True)
+    return Response(serializer.data)
+
+# view a single product detail using product id
+@api_view(['GET'])
+def product_by_id(request, product_id):
+    try:
+        shipment = Shipment.objects.get(pk=product_id)
+    except Shipment.DoesNotExist:
+        return Response(
+            {
+                'message': 'Product not found'
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    serializer = ShipmentSerializer(shipment)
     return Response(serializer.data)
