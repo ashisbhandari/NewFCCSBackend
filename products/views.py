@@ -56,7 +56,12 @@ def View_Product(request):
 @api_view(['GET'])
 def product_by_id(request, product_id):
     try:
-        shipment = Shipment.objects.get(pk=product_id)
+        # First try to fetch by numeric ID
+        if product_id.isdigit():
+            shipment = Shipment.objects.get(pk=int(product_id))
+        else:
+            # If not numeric, try to fetch by product_id field (handles "fccs 9" or "fccs9")
+            shipment = Shipment.objects.get(product_id=product_id)
     except Shipment.DoesNotExist:
         return Response(
             {

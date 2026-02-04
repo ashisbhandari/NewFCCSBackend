@@ -13,7 +13,7 @@ from rest_framework import status
 # default user function view
 def user_dashboard(request):
     data = {
-        "message": "hello",
+        "message": "hello user page is active",
         "status": "success",
         "user": "dashboard_user"
     }
@@ -72,7 +72,8 @@ def add_user(request):
     
        # helps to get all user data  by admin only 
 @api_view(['GET'])
-def user_details(request):
+@permission_classes([IsAdminUser])
+def all_user(request):
     # Get all users from database
     users = User.objects.all()
     
