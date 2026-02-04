@@ -10,3 +10,11 @@ def home(request):
         "user": "dashboard_invoice"
     }
     return JsonResponse(data)
+
+def add_manifest(request):
+    data = {
+        "message": "add manifest page is active",
+        "status": "success",
+        "user": "add_manifest_user"
+    }
+    return JsonResponse(data)
