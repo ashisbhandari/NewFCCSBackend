@@ -7,8 +7,11 @@ class Manifest(models.Model):
     manifest_no = models.CharField(max_length=100, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     cnNumbers = models.TextField()  # Store CN numbers as a comma-separated string
-    status = models.CharField(max_length=50,default='Pending')
+    status = models.CharField(max_length=50, default='Pending')
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    manual_cn = models.TextField(blank=True, null=True)
+    receiver_name = models.CharField(max_length=255, blank=True, null=True)
+    destination = models.TextField(blank=True, null=True)
     
 
     def __str__(self):

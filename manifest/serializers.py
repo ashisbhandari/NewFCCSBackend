@@ -9,10 +9,16 @@ class ManifestSerializer(serializers.ModelSerializer):
 	created_at = serializers.DateTimeField(read_only=True)
 	status = serializers.CharField(read_only=True)
 	user = serializers.CharField(source='user.userID', read_only=True)
+	receiver_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+	destination = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+	manual_cn = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 	class Meta:
 		model = Manifest
-		fields = ['id', 'manifest_no', 'cnNumbers', 'status', 'created_at', 'user']
+		fields = [
+			'id', 'manifest_no', 'cnNumbers', 'status', 'created_at', 'user',
+			'receiver_name', 'destination', 'manual_cn'
+		]
 
 	def create(self, validated_data):
 		# Set user from request context

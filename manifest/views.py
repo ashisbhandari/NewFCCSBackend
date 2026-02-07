@@ -77,9 +77,8 @@ def view_manifests(request):
 @permission_classes([IsAuthenticated])
 def update_manifest_status(request, manifest_id):
     try:
-        if request.user.is_staff or Manifest.objects.get(manifest_id=manifest_id).user == request.user:
-            manifest = Manifest.objects.get(manifest_id=manifest_id)
-        else:
+        manifest = Manifest.objects.get(id=manifest_id)
+        if not request.user.is_staff and manifest.user != request.user:
             return Response(
                 {
                     'message': 'You do not have permission to update this manifest'
@@ -95,15 +94,23 @@ def update_manifest_status(request, manifest_id):
         )
     
     if request.method == 'PATCH':
-        manifest.status = 'Collected'
-        manifest.save()
-        serializer = ManifestSerializer(manifest)
+        new_status = request.data.get('status')
+        if new_status:
+            manifest.status = new_status
+            manifest.save()
+            serializer = ManifestSerializer(manifest)
+            return Response(
+                {
+                    'message': f'Manifest status updated to {new_status}',
+                    'data': serializer.data
+                },
+                status=status.HTTP_200_OK
+            )
         return Response(
             {
-                'message': 'Manifest status updated to Collected',
-                'data': serializer.data
+                'message': 'Status field is required'
             },
-            status=status.HTTP_200_OK
+            status=status.HTTP_400_BAD_REQUEST
         )
     return Response(
         {

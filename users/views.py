@@ -161,7 +161,11 @@ def user_login(request):
 @permission_classes([IsAuthenticated])
 def get_user_details(request, user_id):
     try:
-        user = User.objects.get(id=user_id)
+        # Try to fetch by id if user_id is integer, else by userID
+        if str(user_id).isdigit():
+            user = User.objects.get(id=int(user_id))
+        else:
+            user = User.objects.get(userID=user_id)
 
         user_data = {
             'id': user.id,
