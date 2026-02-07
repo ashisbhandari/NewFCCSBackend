@@ -26,7 +26,7 @@ class ShipmentSerializer(serializers.ModelSerializer):
     sender = SenderSerializer()
     receiver = ReceiverSerializer()
     pieces_detail = ShipmentPieceSerializer(many=True)
-    product_id = serializers.CharField(required=False, read_only=True)
+    product_id = serializers.CharField(required=False, allow_blank=False)
     user = serializers.CharField(source='user.companyName', read_only=True)
     user_id = serializers.IntegerField(source='user.id', read_only=True)
     origin = serializers.CharField(required=False, read_only=True)
@@ -34,6 +34,11 @@ class ShipmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Shipment
         fields = '__all__'
+
+    def validate_product_id(self, value):
+        if Shipment.objects.filter(product_id=value).exists():
+            raise serializers.ValidationError('Product ID already exists.')
+        return value
 
     def create(self, validated_data):
         sender_data = validated_data.pop('sender')
