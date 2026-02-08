@@ -75,9 +75,9 @@ def view_manifests(request):
 # only specific user can update the status
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
-def update_manifest_status(request, manifest_id):
+def update_manifest_status(request, manifest_no):
     try:
-        manifest = Manifest.objects.get(id=manifest_id)
+        manifest = Manifest.objects.get(manifest_no=manifest_no)
         if not request.user.is_staff and manifest.user != request.user:
             return Response(
                 {
@@ -115,6 +115,53 @@ def update_manifest_status(request, manifest_id):
     return Response(
         {
             'message': 'Only PATCH method is allowed'
+        },
+        status=status.HTTP_405_METHOD_NOT_ALLOWED
+    )
+    
+    
+# update manifest according to manifest no
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_manifest(request, manifest_no):
+    try:
+        manifest = Manifest.objects.get(manifest_no=manifest_no)
+        if not request.user.is_staff and manifest.user != request.user:
+            return Response(
+                {
+                    'message': 'You do not have permission to update this manifest'
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+    except Manifest.DoesNotExist:
+        return Response(
+            {
+                'message': 'Manifest not found'
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    if request.method == 'PUT':
+        serializer = ManifestSerializer(manifest, data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {
+                    'message': 'Manifest updated successfully!',
+                    'data': serializer.data
+                },
+                status=status.HTTP_200_OK
+            )
+        return Response(
+            {
+                'message': 'Failed to update manifest',
+                'errors': serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    return Response(
+        {
+            'message': 'Only PUT method is allowed'
         },
         status=status.HTTP_405_METHOD_NOT_ALLOWED
     )
