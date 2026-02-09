@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from manifest.models import Manifest
@@ -162,6 +162,50 @@ def update_manifest(request, manifest_no):
     return Response(
         {
             'message': 'Only PUT method is allowed'
+        },
+        status=status.HTTP_405_METHOD_NOT_ALLOWED
+    )
+    
+# view which only show the cn numbers and pass user record not much more 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def view_manifest_cn_numbers(request, manifest_no):
+    try:
+        manifest = Manifest.objects.get(manifest_no=manifest_no)
+        if not request.user.is_staff and manifest.user != request.user:
+            return Response(
+                {
+                    'message': 'You do not have permission to view this manifest'
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+    except Manifest.DoesNotExist:
+        return Response(
+            {
+                'message': 'Manifest not found'
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    if request.method == 'GET':
+        cn_numbers = []
+        manifest_status = manifest.status
+        if manifest.cnNumbers:
+            cn_numbers.extend([cn.strip() for cn in manifest.cnNumbers.split(',') if cn.strip()])
+        if manifest.manual_cn:
+            cn_numbers.extend([cn.strip() for cn in manifest.manual_cn.split(',') if cn.strip()])
+        
+        return Response(
+            {
+                'message': 'CN numbers retrieved successfully!',
+                'data': cn_numbers,
+                'status': manifest_status
+            },
+            status=status.HTTP_200_OK
+        )
+    return Response(
+        {
+            'message': 'Only GET method is allowed'
         },
         status=status.HTTP_405_METHOD_NOT_ALLOWED
     )
