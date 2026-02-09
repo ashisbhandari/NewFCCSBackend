@@ -172,13 +172,7 @@ def update_manifest(request, manifest_no):
 def view_manifest_cn_numbers(request, manifest_no):
     try:
         manifest = Manifest.objects.get(manifest_no=manifest_no)
-        if not request.user.is_staff and manifest.user != request.user:
-            return Response(
-                {
-                    'message': 'You do not have permission to view this manifest'
-                },
-                status=status.HTTP_403_FORBIDDEN
-            )
+        
     except Manifest.DoesNotExist:
         return Response(
             {
