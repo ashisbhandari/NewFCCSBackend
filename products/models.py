@@ -95,3 +95,36 @@ class ShipmentPiece(models.Model):
 
     def __str__(self):
         return f"{self.shipment.product_id} - Piece {self.piece_number}"
+
+
+class ShipmentTracking(models.Model):
+    STATUS_CHOICES = [
+        ('Booked', 'Booked'),
+        ('Picked Up', 'Picked Up'),
+        ('In Transit', 'In Transit'),
+        ('Arrived to destination', 'Arrived to destination'),
+        ('Delivered', 'Delivered'),
+        ('On Hold', 'On Hold'),
+        ('Cancelled', 'Cancelled'),
+    ]
+
+    shipment = models.ForeignKey(
+        Shipment,
+        on_delete=models.CASCADE,
+        related_name="tracking_history"
+    )
+
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES)
+    location = models.CharField(max_length=255, blank=True, null=True)
+    origin = models.CharField(max_length=255, blank=True, null=True)
+    destination = models.CharField(max_length=255, blank=True, null=True)
+    remarks = models.TextField(blank=True, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    updated_by = models.CharField(max_length=100, blank=True, null=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        db_table = 'shipment_tracking'
+
+    def __str__(self):
+        return f"{self.shipment.product_id} - {self.status} at {self.timestamp}"

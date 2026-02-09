@@ -1,6 +1,6 @@
 import uuid
 from rest_framework import serializers
-from .models import Shipment, Sender, Receiver, ShipmentPiece
+from .models import Shipment, Sender, Receiver, ShipmentPiece, ShipmentTracking
 
 # sender sealizers
 class SenderSerializer(serializers.ModelSerializer):
@@ -20,16 +20,25 @@ class ShipmentPieceSerializer(serializers.ModelSerializer):
         model = ShipmentPiece
         fields = ['piece_number', 'weight']
 
+# ShipmentTracking serializers
+class ShipmentTrackingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ShipmentTracking
+        fields = ['id', 'status', 'timestamp', 'updated_by']
+        read_only_fields = ['id', 'timestamp']
+
 
 # Shipment serializers
 class ShipmentSerializer(serializers.ModelSerializer):
-    sender = SenderSerializer()
-    receiver = ReceiverSerializer()
+    sender = SenderSerializer(allow_null=True)
+    receiver = ReceiverSerializer(allow_null=True)
     pieces_detail = ShipmentPieceSerializer(many=True)
+    tracking_history = ShipmentTrackingSerializer(many=True, read_only=True)
     product_id = serializers.CharField(required=False, allow_blank=False)
     user = serializers.CharField(source='user.companyName', read_only=True)
     user_id = serializers.IntegerField(source='user.id', read_only=True)
     origin = serializers.CharField(required=False, read_only=True)
+    destination = serializers.CharField(source='destination_district', read_only=True)
 
     class Meta:
         model = Shipment
@@ -43,7 +52,7 @@ class ShipmentSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         sender_data = validated_data.pop('sender')
         receiver_data = validated_data.pop('receiver')
-        pieces_data = validated_data.pop('pieces_detail')
+        pieces_data = validated_data.pop('pieces_detail', [])
 
         # Automatically set the user from the request context
         request = self.context.get('request')
@@ -72,4 +81,16 @@ class ShipmentSerializer(serializers.ModelSerializer):
         for piece in pieces_data:
             ShipmentPiece.objects.create(shipment=shipment, **piece)
 
+        # Create initial tracking entry
+        ShipmentTracking.objects.create(
+            shipment=shipment,
+            status='Booked',
+            location=shipment.origin if shipment.origin else '',
+            origin=shipment.origin if shipment.origin else '',
+            destination=shipment.destination_district if shipment.destination_district else '',
+            remarks='Shipment created',
+            updated_by=shipment.booked_by if shipment.booked_by else 'System'
+        )
+
+        
         return shipment
