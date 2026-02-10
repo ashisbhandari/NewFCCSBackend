@@ -128,7 +128,8 @@ WSGI_APPLICATION = 'fccs.wsgi.application'
 # Render PostgreSQL Database (using DATABASE_URL environment variable)
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL'),
+        default="postgresql://fccs_srzi_user:5FRr5CJ4Uc5NCrxTPrOYjR85UZvL8zC0@dpg-d65jnev5r7bs73cudh7g-a/fccs_srzi",
+        # default=os.environ.get('DATABASE_URL'),
         conn_max_age=600,
         conn_health_checks=True,        #python manage.py collectstatic --noinput
     )
