@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,11 +25,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-&%=hh6&3^#v12h!pfc$g$sps39^j#a_u#75!7xi&7!=tn%93v#'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
+    'fccs.onrender.com',
     '*',
 ]
 
@@ -51,6 +54,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -97,6 +101,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost',
     'http://127.0.0.1',
     'http://[::1]',
+    'https://fccs.onrender.com',
 ]
 CORS_ALLOW_ALL_ORIGINS = True
 
@@ -118,22 +123,26 @@ WSGI_APPLICATION = 'fccs.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Render PostgreSQL Database (using DATABASE_URL environment variable)
+DATABASES = {
+    'default': dj_database_url.config(
+        default=os.environ.get('DATABASE_URL'),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+}
+
+# Local PostgreSQL configuration (uncomment to use locally)
 # DATABASES = {
 #     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'FCCS',            # Database name
+#         'USER': 'postgres',        # Username you set in pgAdmin
+#         'PASSWORD': '123456789',  # The password you created
+#         'HOST': 'localhost',       # Since server is local
+#         'PORT': '5432',            # Default PostgreSQL port
 #     }
 # }
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'FCCS',            # Database name
-        'USER': 'postgres',        # Username you set in pgAdmin
-        'PASSWORD': '123456789',  # The password you created
-        'HOST': 'localhost',       # Since server is local
-        'PORT': '5432',            # Default PostgreSQL port
-    }
-}
 
 
 # Password validation
@@ -170,7 +179,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Custom User Model
 AUTH_USER_MODEL = 'users.User'
