@@ -13,12 +13,9 @@ def update_shipment_status_on_manifest_creation(sender, instance, created, **kwa
         # Parse CN numbers (comma-separated)
         cn_list = []
         
-        # Get CNs from both cnNumbers and manual_cn fields
+        # Get CNs from cnNumbers field
         if instance.cnNumbers:
             cn_list.extend([cn.strip() for cn in instance.cnNumbers.split(',') if cn.strip()])
-        
-        if instance.manual_cn:
-            cn_list.extend([cn.strip() for cn in instance.manual_cn.split(',') if cn.strip()])
         
         # Update status for each shipment
         for cn_number in cn_list:
@@ -29,7 +26,7 @@ def update_shipment_status_on_manifest_creation(sender, instance, created, **kwa
                 ShipmentTracking.objects.create(
                     shipment=shipment,
                     status='In Transit',
-                    location=instance.destination if instance.destination else '',
+                    location='',
                     origin=shipment.origin if shipment.origin else '',
                     destination=shipment.destination_district if shipment.destination_district else '',
                     remarks=f'Added to manifest {instance.manifest_no}',
