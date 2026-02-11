@@ -64,8 +64,8 @@ def create_manifest_tracking_records(manifest, status, location, updated_by):
         # Map manifest status to shipment tracking status
         tracking_status = map_manifest_status_to_tracking_status(status)
         
-        # Create remarks message
-        remarks = f"Packet {tracking_status.lower()} at {location} and updated by {updated_by}"
+        # Create remarks message based on status
+        remarks = generate_tracking_remarks(tracking_status, location, updated_by)
         
         # Create tracking record
         tracking = create_tracking_record(
@@ -82,14 +82,52 @@ def create_manifest_tracking_records(manifest, status, location, updated_by):
     return tracking_records
 
 
+def generate_tracking_remarks(tracking_status, location, updated_by):
+    """
+    Generate tracking remarks in the required format with status and date/time
+    
+    Format Examples:
+    - In Transit: "In Transit\nFeb 11, 2026, 09:12 AM • Updated by System\nStatus updated"
+    - Picked Up: "Arrived at Kathmandu Distribution Center\nFeb 11, 2026, 09:12 AM • Updated by Ahmed Khan\nStatus updated"
+    - Arrived to destination: "Arrived at Location\nFeb 11, 2026, 10:30 AM • Updated by Pokhara Branch\nStatus updated"
+    
+    Args:
+        tracking_status: The tracking status
+        location: The location
+        updated_by: Who updated the status
+    
+    Returns:
+        Formatted remarks string
+    """
+    from django.utils import timezone
+    
+    # Get current date and time in the required format
+    now = timezone.now()
+    formatted_datetime = now.strftime('%b %d, %Y, %I:%M %p')  # e.g., "Feb 11, 2026, 08:51 AM"
+    
+    # Generate the status line with location for collection and arrival
+    if tracking_status == 'Picked Up':
+        status_line = f"Arrived at {location}"
+    elif tracking_status == 'Arrived to destination':
+        status_line = f"Arrived at {location}"
+    else:
+        status_line = tracking_status
+    
+    # Generate the full remarks with date and person
+    remarks = f"{status_line}\n{formatted_datetime} • Updated by {updated_by}\nStatus updated"
+    
+    return remarks
+    
+    return tracking_records
+
+
 def map_manifest_status_to_tracking_status(manifest_status):
     """
     Map manifest status to ShipmentTracking status choices
     
     Mapping:
-    Pending -> Booked
-    Collected -> Picked Up
-    In Transit -> In Transit
+    In Transit -> In Transit (when manifest created)
+    Collected -> Picked Up (when collected at branch)
     Arrived -> Arrived to destination
     Delivered -> Delivered
     On Hold -> On Hold
@@ -97,8 +135,8 @@ def map_manifest_status_to_tracking_status(manifest_status):
     """
     status_map = {
         'Pending': 'Booked',
-        'Collected': 'Picked Up',
         'In Transit': 'In Transit',
+        'Collected': 'Picked Up',
         'Arrived': 'Arrived to destination',
         'Delivered': 'Delivered',
         'On Hold': 'On Hold',
@@ -111,11 +149,11 @@ def map_manifest_status_to_tracking_status(manifest_status):
 def create_initial_tracking_for_manifest(manifest, updated_by):
     """
     Create initial tracking records when manifest is created with CNs
-    This marks the CNs as "Booked"
+    This marks the CNs as "In Transit" when manifest is created
     
     Args:
         manifest: The Manifest object
-        updated_by: Name of person who created the manifest
+        updated_by: Name of person who created the manifest (usually will be shown as "System")
     """
     if not manifest.cnNumbers:
         return
@@ -124,13 +162,15 @@ def create_initial_tracking_for_manifest(manifest, updated_by):
     
     tracking_records = []
     for cn in cn_list:
-        remarks = f"Packet booked in manifest {manifest.manifest_no} by {updated_by}"
+        location = manifest.location or 'Not specified'
+        # Create "In Transit" tracking when manifest is created
+        remarks = generate_tracking_remarks('In Transit', location, 'System')
         
         tracking = create_tracking_record(
             cn_number=cn,
-            status='Booked',
-            location=manifest.location or 'Not specified',
-            updated_by=updated_by,
+            status='In Transit',
+            location=location,
+            updated_by='System',
             remarks=remarks
         )
         

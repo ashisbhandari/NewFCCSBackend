@@ -23,6 +23,11 @@ def home(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def add_manifest(request):
+    """
+    Add a new manifest with CN numbers
+    User provides: cnNumbers, name, contact_number, location
+    System auto-sets: manifest_no, created_at, updated_at, user, status
+    """
     if request.method == 'POST':
         serializer = ManifestSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
@@ -81,13 +86,20 @@ def view_manifests(request):
         status=status.HTTP_405_METHOD_NOT_ALLOWED
     )
     
-# update the status of manifest to collected
-# anyone can update the status along with user info (name, contact_number)
-# location and device info are auto-captured by system
-# tracking records are automatically created for all CNs
+# update the status of manifest
+# User provides: status (required), name, contact_number, location (optional)
+# System auto-captures: device_info, ip_address, and optionally location from GPS
+# Tracking records are automatically created for all CNs
 @api_view(['PATCH'])
 @permission_classes([AllowAny])
 def update_manifest_status(request, manifest_no):
+    """
+    Update manifest status and create tracking records for all CNs
+    
+    Required: status
+    Optional: name, contact_number, location
+    Auto-captured: device_info, ip_address (latitude/longitude if not provided)
+    """
     try:
         manifest = Manifest.objects.get(manifest_no=manifest_no)
     except Manifest.DoesNotExist:
@@ -109,13 +121,31 @@ def update_manifest_status(request, manifest_no):
             if 'contact_number' in request.data:
                 manifest.contact_number = request.data.get('contact_number')
             
-            # Auto-capture location and device information from request
+            # Update location from user input if provided
+            if 'location' in request.data:
+                manifest.location = request.data.get('location')
+            
+            # Auto-capture device and IP information from request
             location_device_info = extract_location_and_device(request)
-            manifest.location = location_device_info['location']
             manifest.device_info = location_device_info['device_info']
             manifest.ip_address = location_device_info['ip_address']
-            manifest.latitude = location_device_info['latitude']
-            manifest.longitude = location_device_info['longitude']
+            
+            # Update GPS coordinates if provided by user
+            if 'latitude' in request.data:
+                manifest.latitude = request.data.get('latitude')
+            if 'longitude' in request.data:
+                manifest.longitude = request.data.get('longitude')
+            
+            # If location not provided but GPS coordinates are provided, convert to address
+            if 'latitude' in request.data and 'longitude' in request.data and 'location' not in request.data:
+                try:
+                    from .location_utils import get_address_from_coordinates
+                    manifest.location = get_address_from_coordinates(
+                        float(request.data.get('latitude')),
+                        float(request.data.get('longitude'))
+                    )
+                except:
+                    manifest.location = f"Lat: {request.data.get('latitude')}, Long: {request.data.get('longitude')}"
             
             # Save manifest - updated_at will automatically update via auto_now
             manifest.save()

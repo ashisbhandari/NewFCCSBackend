@@ -12,11 +12,11 @@ class ManifestSerializer(serializers.ModelSerializer):
 	user = serializers.CharField(source='user.userID', read_only=True)
 	name = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # User's name
 	contact_number = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # User's contact number
-	location = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # User's location (auto-fetched)
-	device_info = serializers.CharField(read_only=True)  # Device info (auto-captured)
-	ip_address = serializers.CharField(read_only=True)  # IP address (auto-captured)
-	latitude = serializers.FloatField(required=False, allow_null=True)  # GPS latitude
-	longitude = serializers.FloatField(required=False, allow_null=True)  # GPS longitude
+	location = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # User provides location
+	device_info = serializers.CharField(read_only=True)  # Device info (auto-captured on status update)
+	ip_address = serializers.CharField(read_only=True)  # IP address (auto-captured on status update)
+	latitude = serializers.FloatField(required=False, allow_null=True)  # GPS latitude (user provides or auto on status update)
+	longitude = serializers.FloatField(required=False, allow_null=True)  # GPS longitude (user provides or auto on status update)
 
 	class Meta:
 		model = Manifest
