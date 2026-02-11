@@ -12,22 +12,27 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
-import dj_database_url # type: ignore
-
-SECRET_KEY = os.environ.get('SECRET_KEY')
+import dj_database_url
+from dotenv import load_dotenv
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load environment variables from .env file
+env_path = BASE_DIR / '.env'
+load_dotenv(dotenv_path=env_path)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-&%=hh6&3^#v12h!pfc$g$sps39^j#a_u#75!7xi&7!=tn%93v#'
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable is not set. Check your .env file.")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG') == 'True'
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -109,11 +114,9 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 
 # JWT Configuration
-from datetime import timedelta
-
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # Access token expires in 5 minutes
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),    # Refresh token expires in 1 day
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
 }
@@ -125,27 +128,19 @@ WSGI_APPLICATION = 'fccs.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Get DATABASE_URL
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable is not set. Check your .env file.")
+
 # Render PostgreSQL Database (using DATABASE_URL environment variable)
 DATABASES = {
     'default': dj_database_url.config(
-        default="postgresql://fccs_srzi_user:5FRr5CJ4Uc5NCrxTPrOYjR85UZvL8zC0@dpg-d65jnev5r7bs73cudh7g-a/fccs_srzi",
-        # default=os.environ.get('DATABASE_URL'),
+        default=DATABASE_URL,
         conn_max_age=600,
-        conn_health_checks=True,        #python manage.py collectstatic --noinput
+        conn_health_checks=True,
     )
 }
-
-# Local PostgreSQL configuration (uncomment to use locally)
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'FCCS',            # Database name
-#         'USER': 'postgres',        # Username you set in pgAdmin
-#         'PASSWORD': '123456789',  # The password you created
-#         'HOST': 'localhost',       # Since server is local
-#         'PORT': '5432',            # Default PostgreSQL port
-#     }
-# }
 
 
 # Password validation
