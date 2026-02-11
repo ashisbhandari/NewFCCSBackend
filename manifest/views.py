@@ -31,28 +31,37 @@ def add_manifest(request):
     if request.method == 'POST':
         serializer = ManifestSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            manifest = serializer.save()
-            
-            # Refresh manifest from database to get the newly generated manifest_no
-            manifest.refresh_from_db()
-            
-            # Create initial tracking records for all CNs when manifest is created
-            # Get the user's name from the request or use user's username
-            updated_by = request.data.get('name') or request.user.username or 'System'
-            
-            # Create tracking records
-            create_initial_tracking_for_manifest(manifest, updated_by)
-            
-            # Re-serialize the refreshed manifest to include manifest_no
-            updated_serializer = ManifestSerializer(manifest)
-            
-            return Response(
-                {
-                    'message': 'Manifest added successfully with initial tracking records!',
-                    'data': updated_serializer.data
-                },
-                status=status.HTTP_201_CREATED
-            )
+            try:
+                manifest = serializer.save()
+                
+                # Refresh manifest from database to get the newly generated manifest_no
+                manifest.refresh_from_db()
+                
+                # Create initial tracking records for all CNs when manifest is created
+                # Get the user's name from the request or use user's username
+                updated_by = request.data.get('name') or request.user.username or 'System'
+                
+                # Create tracking records
+                create_initial_tracking_for_manifest(manifest, updated_by)
+                
+                # Re-serialize the refreshed manifest to include manifest_no
+                updated_serializer = ManifestSerializer(manifest)
+                
+                return Response(
+                    {
+                        'message': 'Manifest added successfully with initial tracking records!',
+                        'data': updated_serializer.data
+                    },
+                    status=status.HTTP_201_CREATED
+                )
+            except Exception as e:
+                return Response(
+                    {
+                        'message': 'Error creating manifest',
+                        'error': str(e)
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         return Response(
             {
                 'message': 'Failed to add manifest',
