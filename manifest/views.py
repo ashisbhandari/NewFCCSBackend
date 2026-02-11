@@ -7,6 +7,7 @@ from rest_framework import status
 from manifest.models import Manifest
 from .serializers import ManifestSerializer
 from .location_utils import extract_location_and_device
+from .tracking_helper import create_manifest_tracking_records, create_initial_tracking_for_manifest
 
 # Create your views here.
 
@@ -25,10 +26,18 @@ def add_manifest(request):
     if request.method == 'POST':
         serializer = ManifestSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            manifest = serializer.save()
+            
+            # Create initial tracking records for all CNs when manifest is created
+            # Get the user's name from the request or use user's username
+            updated_by = request.data.get('name') or request.user.username or 'System'
+            
+            # Create tracking records
+            create_initial_tracking_for_manifest(manifest, updated_by)
+            
             return Response(
                 {
-                    'message': 'Manifest added successfully!',
+                    'message': 'Manifest added successfully with initial tracking records!',
                     'data': serializer.data
                 },
                 status=status.HTTP_201_CREATED
@@ -75,6 +84,7 @@ def view_manifests(request):
 # update the status of manifest to collected
 # anyone can update the status along with user info (name, contact_number)
 # location and device info are auto-captured by system
+# tracking records are automatically created for all CNs
 @api_view(['PATCH'])
 @permission_classes([AllowAny])
 def update_manifest_status(request, manifest_no):
@@ -109,10 +119,20 @@ def update_manifest_status(request, manifest_no):
             
             # Save manifest - updated_at will automatically update via auto_now
             manifest.save()
+            
+            # Create tracking records for all CNs when status changes
+            updated_by = manifest.name or request.data.get('name') or 'System'
+            create_manifest_tracking_records(
+                manifest=manifest,
+                status=new_status,
+                location=manifest.location,
+                updated_by=updated_by
+            )
+            
             serializer = ManifestSerializer(manifest)
             return Response(
                 {
-                    'message': f'Manifest status updated to {new_status}',
+                    'message': f'Manifest status updated to {new_status} and tracking records created',
                     'data': serializer.data
                 },
                 status=status.HTTP_200_OK
