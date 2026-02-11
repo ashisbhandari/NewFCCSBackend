@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from manifest.models import Manifest
 from .serializers import ManifestSerializer
+from .location_utils import extract_location_and_device
 
 # Create your views here.
 
@@ -72,19 +73,13 @@ def view_manifests(request):
     )
     
 # update the status of manifest to collected
-# only specific user can update the status
+# anyone can update the status along with user info (name, contact_number)
+# location and device info are auto-captured by system
 @api_view(['PATCH'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def update_manifest_status(request, manifest_no):
     try:
         manifest = Manifest.objects.get(manifest_no=manifest_no)
-        if not request.user.is_staff and manifest.user != request.user:
-            return Response(
-                {
-                    'message': 'You do not have permission to update this manifest'
-                },
-                status=status.HTTP_403_FORBIDDEN
-            )
     except Manifest.DoesNotExist:
         return Response(
             {
@@ -97,6 +92,22 @@ def update_manifest_status(request, manifest_no):
         new_status = request.data.get('status')
         if new_status:
             manifest.status = new_status
+            
+            # Update user-provided information (name and contact_number)
+            if 'name' in request.data:
+                manifest.name = request.data.get('name')
+            if 'contact_number' in request.data:
+                manifest.contact_number = request.data.get('contact_number')
+            
+            # Auto-capture location and device information from request
+            location_device_info = extract_location_and_device(request)
+            manifest.location = location_device_info['location']
+            manifest.device_info = location_device_info['device_info']
+            manifest.ip_address = location_device_info['ip_address']
+            manifest.latitude = location_device_info['latitude']
+            manifest.longitude = location_device_info['longitude']
+            
+            # Save manifest - updated_at will automatically update via auto_now
             manifest.save()
             serializer = ManifestSerializer(manifest)
             return Response(
@@ -142,12 +153,29 @@ def update_manifest(request, manifest_no):
         )
     
     if request.method == 'PUT':
-        serializer = ManifestSerializer(manifest, data=request.data, context={'request': request})
+        # Get user data and location data
+        data = request.data.copy()
+        
+        # If name and contact_number are provided, save them
+        if 'name' in data:
+            manifest.name = data.get('name')
+        if 'contact_number' in data:
+            manifest.contact_number = data.get('contact_number')
+        
+        # Get location from request or use a default placeholder
+        if 'location' in data:
+            manifest.location = data.get('location')
+        else:
+            # System auto-fetches location (can be enhanced with geolocation API)
+            location = data.get('location', 'Location not provided')
+            manifest.location = location
+        
+        serializer = ManifestSerializer(manifest, data=data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(
                 {
-                    'message': 'Manifest updated successfully!',
+                    'message': 'Manifest updated successfully with user information!',
                     'data': serializer.data
                 },
                 status=status.HTTP_200_OK
@@ -186,8 +214,6 @@ def view_manifest_cn_numbers(request, manifest_no):
         manifest_status = manifest.status
         if manifest.cnNumbers:
             cn_numbers.extend([cn.strip() for cn in manifest.cnNumbers.split(',') if cn.strip()])
-        if manifest.manual_cn:
-            cn_numbers.extend([cn.strip() for cn in manifest.manual_cn.split(',') if cn.strip()])
         
         return Response(
             {

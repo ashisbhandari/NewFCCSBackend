@@ -7,17 +7,22 @@ class ManifestSerializer(serializers.ModelSerializer):
 	id = serializers.IntegerField(read_only=True)
 	manifest_no = serializers.CharField(read_only=True)
 	created_at = serializers.DateTimeField(read_only=True)
-	status = serializers.CharField(read_only=True)
+	updated_at = serializers.DateTimeField(read_only=True)
+	status = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 	user = serializers.CharField(source='user.userID', read_only=True)
-	receiver_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-	destination = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-	manual_cn = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+	name = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # User's name
+	contact_number = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # User's contact number
+	location = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # User's location (auto-fetched)
+	device_info = serializers.CharField(read_only=True)  # Device info (auto-captured)
+	ip_address = serializers.CharField(read_only=True)  # IP address (auto-captured)
+	latitude = serializers.FloatField(required=False, allow_null=True)  # GPS latitude
+	longitude = serializers.FloatField(required=False, allow_null=True)  # GPS longitude
 
 	class Meta:
 		model = Manifest
 		fields = [
-			'id', 'manifest_no', 'cnNumbers', 'status', 'created_at', 'user',
-			'receiver_name', 'destination', 'manual_cn'
+			'id', 'manifest_no', 'cnNumbers', 'status', 'created_at', 'updated_at', 'user',
+			'name', 'contact_number', 'location', 'device_info', 'ip_address', 'latitude', 'longitude'
 		]
 
 	def create(self, validated_data):

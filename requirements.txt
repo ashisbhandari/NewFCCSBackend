@@ -8,3 +8,7 @@ whitenoise
 gunicorn
 python-dotenv
 setuptools
+geoip2
+geopy
+user-agents
+requests
