@@ -25,11 +25,14 @@ def home(request):
 def add_manifest(request):
     """
     Add a new manifest with CN numbers
-    User provides: cnNumbers, name, contact_number, location
-    System auto-sets: manifest_no, created_at, updated_at, user, status
+    Only required: cnNumbers (comma-separated like "FCCS 101","FCCS 102")
+    Auto-set: manifest_no, created_at, user, status=Pending
+    Other fields: remain NULL until status is changed
     """
     if request.method == 'POST':
-        serializer = ManifestSerializer(data=request.data, context={'request': request})
+        # Only accept cnNumbers from user
+        data = {'cnNumbers': request.data.get('cnNumbers')}
+        serializer = ManifestSerializer(data=data, context={'request': request})
         if serializer.is_valid():
             try:
                 manifest = serializer.save()
@@ -37,20 +40,10 @@ def add_manifest(request):
                 # Refresh manifest from database to get the newly generated manifest_no
                 manifest.refresh_from_db()
                 
-                # Create initial tracking records for all CNs when manifest is created
-                # Get the user's name from the request or use user's username
-                updated_by = request.data.get('name') or request.user.username or 'System'
-                
-                # Create tracking records
-                create_initial_tracking_for_manifest(manifest, updated_by)
-                
-                # Re-serialize the refreshed manifest to include manifest_no
-                updated_serializer = ManifestSerializer(manifest)
-                
                 return Response(
                     {
-                        'message': 'Manifest added successfully with initial tracking records!',
-                        'data': updated_serializer.data
+                        'message': 'Manifest created successfully!',
+                        'data': ManifestSerializer(manifest).data
                     },
                     status=status.HTTP_201_CREATED
                 )

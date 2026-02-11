@@ -8,15 +8,15 @@ class ManifestSerializer(serializers.ModelSerializer):
 	manifest_no = serializers.CharField(read_only=True)
 	created_at = serializers.DateTimeField(read_only=True)
 	updated_at = serializers.DateTimeField(read_only=True)
-	status = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+	status = serializers.CharField(read_only=True)
 	user = serializers.CharField(source='user.userID', read_only=True)
-	name = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # User's name
-	contact_number = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # User's contact number
-	location = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # User provides location
-	device_info = serializers.CharField(read_only=True)  # Device info (auto-captured on status update)
-	ip_address = serializers.CharField(read_only=True)  # IP address (auto-captured on status update)
-	latitude = serializers.FloatField(required=False, allow_null=True)  # GPS latitude (user provides or auto on status update)
-	longitude = serializers.FloatField(required=False, allow_null=True)  # GPS longitude (user provides or auto on status update)
+	name = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+	contact_number = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+	location = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+	device_info = serializers.CharField(read_only=True)
+	ip_address = serializers.CharField(read_only=True)
+	latitude = serializers.FloatField(required=False, allow_null=True)
+	longitude = serializers.FloatField(required=False, allow_null=True)
 
 	class Meta:
 		model = Manifest
