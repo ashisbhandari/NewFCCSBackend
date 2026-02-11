@@ -33,6 +33,9 @@ def add_manifest(request):
         if serializer.is_valid():
             manifest = serializer.save()
             
+            # Refresh manifest from database to get the newly generated manifest_no
+            manifest.refresh_from_db()
+            
             # Create initial tracking records for all CNs when manifest is created
             # Get the user's name from the request or use user's username
             updated_by = request.data.get('name') or request.user.username or 'System'
@@ -40,10 +43,13 @@ def add_manifest(request):
             # Create tracking records
             create_initial_tracking_for_manifest(manifest, updated_by)
             
+            # Re-serialize the refreshed manifest to include manifest_no
+            updated_serializer = ManifestSerializer(manifest)
+            
             return Response(
                 {
                     'message': 'Manifest added successfully with initial tracking records!',
-                    'data': serializer.data
+                    'data': updated_serializer.data
                 },
                 status=status.HTTP_201_CREATED
             )
