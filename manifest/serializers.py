@@ -10,6 +10,7 @@ class ManifestSerializer(serializers.ModelSerializer):
 	updated_at = serializers.DateTimeField(read_only=True)
 	status = serializers.CharField(read_only=True)
 	user = serializers.CharField(source='user.userID', read_only=True)
+	cnNumbers = serializers.CharField(required=True, allow_blank=False)
 	name = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 	contact_number = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 	location = serializers.CharField(required=False, allow_null=True, allow_blank=True)
