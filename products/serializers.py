@@ -22,9 +22,11 @@ class ShipmentPieceSerializer(serializers.ModelSerializer):
 
 # ShipmentTracking serializers
 class ShipmentTrackingSerializer(serializers.ModelSerializer):
+    location = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
     class Meta:
         model = ShipmentTracking
-        fields = ['id', 'status', 'timestamp', 'updated_by']
+        fields = ['id', 'status', 'location', 'timestamp', 'updated_by']
         read_only_fields = ['id', 'timestamp']
 
 
