@@ -182,6 +182,7 @@ def get_user_details(request, user_id):
             'contact1': user.contact1,
             'contact2': user.contact2,
             'is_staff': user.is_staff,
+            'role': 'admin' if user.is_staff else 'user',
             'is_active': user.is_active,
             'date_joined': user.date_joined.strftime('%Y-%m-%d %H:%M:%S'),
         }

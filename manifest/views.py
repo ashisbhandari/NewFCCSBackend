@@ -225,7 +225,7 @@ def update_manifest(request, manifest_no):
             manifest.location = data.get('location')
         else:
             # System auto-fetches location (can be enhanced with geolocation API)
-            location = data.get('location', 'Location not provided')
+            location = data.get('location', '')
             manifest.location = location
         
         serializer = ManifestSerializer(manifest, data=data, partial=True, context={'request': request})
