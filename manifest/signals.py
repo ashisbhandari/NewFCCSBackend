@@ -1,6 +1,7 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import Manifest
+from .tracking_helper import generate_tracking_remarks
 from products.models import Shipment, ShipmentTracking
 
 
@@ -23,13 +24,14 @@ def update_shipment_status_on_manifest_creation(sender, instance, created, **kwa
                 shipment = Shipment.objects.get(product_id=cn_number)
                 
                 # Add "In Transit" tracking entry
+                remarks = generate_tracking_remarks('In Transit', instance.location or '', 'System')
                 ShipmentTracking.objects.create(
                     shipment=shipment,
                     status='In Transit',
                     location='',
                     origin=shipment.origin if shipment.origin else '',
                     destination=shipment.destination_district if shipment.destination_district else '',
-                    remarks=f'Added to manifest {instance.manifest_no}',
+                    remarks=remarks,
                     updated_by='System'
                 )
             except Shipment.DoesNotExist:

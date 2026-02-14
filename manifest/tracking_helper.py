@@ -28,7 +28,7 @@ def create_tracking_record(cn_number, status, location, updated_by, remarks=None
             shipment=shipment,
             status=status,
             location=location,
-            remarks=remarks or f"Packet {status.lower()} at {location}",
+            remarks=remarks or generate_tracking_remarks(status, location, updated_by),
             updated_by=updated_by,
             timestamp=timezone.now()
         )
@@ -84,41 +84,45 @@ def create_manifest_tracking_records(manifest, status, location, updated_by):
 
 def generate_tracking_remarks(tracking_status, location, updated_by):
     """
-    Generate tracking remarks in the required format with status and date/time
-    
+    Generate tracking remarks in the required format with status and date/time.
+
     Format Examples:
+    - Booked: "Booked Packet\nFeb 11, 2026, 08:51 AM • Jhapa • Updated by Ahmed\nStatus updated"
     - In Transit: "In Transit\nFeb 11, 2026, 09:12 AM • Updated by System\nStatus updated"
-    - Picked Up: "Arrived at Kathmandu Distribution Center\nFeb 11, 2026, 09:12 AM • Updated by Ahmed Khan\nStatus updated"
-    - Arrived to destination: "Arrived at Location\nFeb 11, 2026, 10:30 AM • Updated by Pokhara Branch\nStatus updated"
-    
+    - Picked Up: "Packet arrived at Kathmandu\nFeb 11, 2026, 09:12 AM • Kathmandu • Updated by Ahmed Khan\nStatus updated"
+    - Arrived to destination: "Arrived at Location\nFeb 11, 2026, 10:30 AM • Location • Updated by Pokhara Branch\nStatus updated"
+
     Args:
         tracking_status: The tracking status
         location: The location
         updated_by: Who updated the status
-    
+
     Returns:
         Formatted remarks string
     """
     from django.utils import timezone
-    
-    # Get current date and time in the required format
+
     now = timezone.now()
-    formatted_datetime = now.strftime('%b %d, %Y, %I:%M %p')  # e.g., "Feb 11, 2026, 08:51 AM"
-    
-    # Generate the status line with location for collection and arrival
-    if tracking_status == 'Picked Up':
-        status_line = f"Arrived at {location}"
-    elif tracking_status == 'Arrived to destination':
-        status_line = f"Arrived at {location}"
+    formatted_datetime = now.strftime('%b %d, %Y, %I:%M %p')
+    clean_location = (location or '').strip()
+
+    normalized_status = (tracking_status or '').strip().lower()
+
+    if normalized_status == 'booked':
+        status_line = 'Booked Packet'
+    elif normalized_status in ('picked up', 'collected'):
+        status_line = "Arrived at location"
+    elif normalized_status == 'arrived to destination':
+        status_line = f"Arrived at {clean_location}" if clean_location else 'Arrived at destination'
     else:
         status_line = tracking_status
-    
-    # Generate the full remarks with date and person
-    remarks = f"{status_line}\n{formatted_datetime} • Updated by {updated_by}\nStatus updated"
-    
-    return remarks
-    
-    return tracking_records
+
+    if clean_location:
+        details_line = f"{formatted_datetime} • {clean_location} • Updated by {updated_by}"
+    else:
+        details_line = f"{formatted_datetime} • Updated by {updated_by}"
+
+    return f"{status_line}\n{details_line}\nStatus updated"
 
 
 def map_manifest_status_to_tracking_status(manifest_status):
@@ -134,16 +138,17 @@ def map_manifest_status_to_tracking_status(manifest_status):
     Cancelled -> Cancelled
     """
     status_map = {
-        'Pending': 'Booked',
-        'In Transit': 'In Transit',
-        'Collected': 'Picked Up',
-        'Arrived': 'Arrived to destination',
-        'Delivered': 'Delivered',
-        'On Hold': 'On Hold',
-        'Cancelled': 'Cancelled',
+        'pending': 'Booked',
+        'in transit': 'In Transit',
+        'collected': 'Picked Up',
+        'arrived': 'Arrived to destination',
+        'delivered': 'Delivered',
+        'on hold': 'On Hold',
+        'cancelled': 'Cancelled',
     }
-    
-    return status_map.get(manifest_status, manifest_status)
+
+    normalized_status = (manifest_status or '').strip().lower()
+    return status_map.get(normalized_status, manifest_status)
 
 
 def create_initial_tracking_for_manifest(manifest, updated_by):
@@ -162,7 +167,7 @@ def create_initial_tracking_for_manifest(manifest, updated_by):
     
     tracking_records = []
     for cn in cn_list:
-        location = manifest.location or 'Not specified'
+        location = manifest.location or ''
         # Create "In Transit" tracking when manifest is created
         remarks = generate_tracking_remarks('In Transit', location, 'System')
         

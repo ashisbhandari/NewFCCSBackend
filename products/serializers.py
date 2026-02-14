@@ -1,5 +1,6 @@
 import uuid
 from rest_framework import serializers
+from manifest.tracking_helper import generate_tracking_remarks
 from .models import Shipment, Sender, Receiver, ShipmentPiece, ShipmentTracking
 
 # sender sealizers
@@ -84,14 +85,16 @@ class ShipmentSerializer(serializers.ModelSerializer):
             ShipmentPiece.objects.create(shipment=shipment, **piece)
 
         # Create initial tracking entry
+        updated_by = shipment.booked_by if shipment.booked_by else 'System'
+        remarks = generate_tracking_remarks('Booked', shipment.origin if shipment.origin else '', updated_by)
         ShipmentTracking.objects.create(
             shipment=shipment,
             status='Booked',
             location=shipment.origin if shipment.origin else '',
             origin=shipment.origin if shipment.origin else '',
             destination=shipment.destination_district if shipment.destination_district else '',
-            remarks='Shipment created',
-            updated_by=shipment.booked_by if shipment.booked_by else 'System'
+            remarks=remarks,
+            updated_by=updated_by
         )
 
         
