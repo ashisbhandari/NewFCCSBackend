@@ -45,7 +45,8 @@ def create_tracking_record(cn_number, status, location, updated_by, remarks=None
 
 def create_manifest_tracking_records(manifest, status, location, updated_by):
     """
-    Create tracking records for all CNs in a manifest when status changes
+    Create tracking records for all CNs in a manifest when status changes.
+    If status is 'Collected' and destination is KTM/Kathmandu, also create 'Arrived to destination'.
     
     Args:
         manifest: The Manifest object
@@ -60,6 +61,9 @@ def create_manifest_tracking_records(manifest, status, location, updated_by):
     cn_list = [cn.strip() for cn in manifest.cnNumbers.split(',') if cn.strip()]
     
     tracking_records = []
+    normalized_manifest_status = (status or '').strip().lower()
+    is_collected = normalized_manifest_status == 'collected'
+    
     for cn in cn_list:
         # Map manifest status to shipment tracking status
         tracking_status = map_manifest_status_to_tracking_status(status)
@@ -78,6 +82,26 @@ def create_manifest_tracking_records(manifest, status, location, updated_by):
         
         if tracking:
             tracking_records.append(tracking)
+            
+            # If status is Collected and destination is KTM/Kathmandu, auto-create destination arrival
+            if is_collected:
+                try:
+                    shipment = Shipment.objects.get(product_id=cn)
+                    destination = (shipment.destination_district or '').strip().lower()
+                    if destination in ('ktm', 'kathmandu'):
+                        # Create 'Arrived to destination' tracking record
+                        dest_remarks = generate_tracking_remarks('Arrived to destination', location, updated_by)
+                        dest_tracking = create_tracking_record(
+                            cn_number=cn,
+                            status='Arrived to destination',
+                            location=location,
+                            updated_by=updated_by,
+                            remarks=dest_remarks
+                        )
+                        if dest_tracking:
+                            tracking_records.append(dest_tracking)
+                except Shipment.DoesNotExist:
+                    pass
     
     return tracking_records
 
@@ -89,7 +113,7 @@ def generate_tracking_remarks(tracking_status, location, updated_by):
     Format Examples:
     - Booked: "Booked Packet\nFeb 11, 2026, 08:51 AM • Jhapa • Updated by Ahmed\nStatus updated"
     - In Transit: "In Transit\nFeb 11, 2026, 09:12 AM • Updated by System\nStatus updated"
-    - Picked Up: "Packet arrived at Kathmandu\nFeb 11, 2026, 09:12 AM • Kathmandu • Updated by Ahmed Khan\nStatus updated"
+    - Arrived at Facility: "Packet arrived at Facility\nFeb 11, 2026, 09:12 AM • Kathmandu • Updated by Ahmed Khan\nStatus updated"
     - Arrived to destination: "Arrived at Location\nFeb 11, 2026, 10:30 AM • Location • Updated by Pokhara Branch\nStatus updated"
 
     Args:
@@ -108,9 +132,9 @@ def generate_tracking_remarks(tracking_status, location, updated_by):
 
     normalized_status = (tracking_status or '').strip().lower()
 
-    if normalized_status == 'booked':
+    if normalized_status == 'booked' or normalized_status == 'packet booked':
         status_line = 'Booked Packet'
-    elif normalized_status in ('collected'):
+    elif normalized_status == 'arrived at facility':
         status_line = "Arrived at Facility"
     elif normalized_status == 'arrived to destination':
         status_line = f"Arrived at {clean_location}" if clean_location else 'Arrived at destination'
@@ -131,14 +155,14 @@ def map_manifest_status_to_tracking_status(manifest_status):
     
     Mapping:
     In Transit -> In Transit (when manifest created)
-    Collected -> Picked Up (when collected at branch)
+    Collected -> Arrived at Facility (when collected at branch)
     Arrived -> Arrived to destination
     Delivered -> Delivered
     On Hold -> On Hold
     Cancelled -> Cancelled
     """
     status_map = {
-        'pending': 'Booked',
+        'pending': 'Packet Booked',
         'in transit': 'In Transit',
         'collected': 'Arrived at Facility',
         'arrived': 'Arrived to destination',
