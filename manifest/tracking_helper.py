@@ -110,7 +110,7 @@ def generate_tracking_remarks(tracking_status, location, updated_by):
 
     if normalized_status == 'booked':
         status_line = 'Booked Packet'
-    elif normalized_status in ('picked up', 'collected'):
+    elif normalized_status in ('collected'):
         status_line = "Arrived at location"
     elif normalized_status == 'arrived to destination':
         status_line = f"Arrived at {clean_location}" if clean_location else 'Arrived at destination'
