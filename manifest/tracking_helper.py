@@ -111,7 +111,7 @@ def generate_tracking_remarks(tracking_status, location, updated_by):
     if normalized_status == 'booked':
         status_line = 'Booked Packet'
     elif normalized_status in ('collected'):
-        status_line = "Arrived at location"
+        status_line = "Arrived at Facility"
     elif normalized_status == 'arrived to destination':
         status_line = f"Arrived at {clean_location}" if clean_location else 'Arrived at destination'
     else:
@@ -140,7 +140,7 @@ def map_manifest_status_to_tracking_status(manifest_status):
     status_map = {
         'pending': 'Booked',
         'in transit': 'In Transit',
-        'collected': 'Picked Up',
+        'collected': 'Arrived at Facility',
         'arrived': 'Arrived to destination',
         'delivered': 'Delivered',
         'on hold': 'On Hold',
