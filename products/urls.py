@@ -9,5 +9,5 @@ urlpatterns = [
     path('tracking/status-options/', views.tracking_status_options, name='tracking_status_options'),
     path('tracking/<str:product_id>/', views.add_tracking_update, name='add_tracking_update'),
     path('tracking/view/<str:identifier>/', views.view_tracking_history, name='view_tracking_history'),
-    path('tracking/update/<int:tracking_id>/', views.update_tracking, name='update_tracking'),
+    path('tracking/update/<str:identifier>/', views.update_tracking, name='update_tracking'),
 ]

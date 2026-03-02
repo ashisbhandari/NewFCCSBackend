@@ -184,10 +184,18 @@ def view_tracking_history(request, identifier):
 # update tracking history by tracking id
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
-def update_tracking(request, tracking_id):
-    try:
-        tracking = ShipmentTracking.objects.select_related('shipment__receiver', 'shipment__sender').get(id=tracking_id)
-    except ShipmentTracking.DoesNotExist:
+def update_tracking(request, identifier):
+    tracking = None
+
+    if identifier.isdigit():
+        tracking = ShipmentTracking.objects.select_related('shipment__receiver', 'shipment__sender').filter(id=int(identifier)).first()
+
+    if tracking is None:
+        shipment = Shipment.objects.select_related('receiver', 'sender').filter(product_id=identifier).first()
+        if shipment:
+            tracking = ShipmentTracking.objects.select_related('shipment__receiver', 'shipment__sender').filter(shipment=shipment).order_by('-timestamp').first()
+
+    if tracking is None:
         return Response(
             {
                 'message': 'Tracking record not found'
