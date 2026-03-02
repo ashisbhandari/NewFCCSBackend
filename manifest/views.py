@@ -13,7 +13,7 @@ from .tracking_helper import create_manifest_tracking_records, create_initial_tr
 
 def home(request):
     data = {
-        "message": "hello manifest page is active",
+        "message": "Serveer is active",
         "status": "success",
         "user": "dashboard_invoice"
     }
@@ -23,12 +23,7 @@ def home(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def add_manifest(request):
-    """
-    Add a new manifest with CN numbers
-    Only required: cnNumbers (comma-separated like "FCCS 101","FCCS 102")
-    Auto-set: manifest_no, created_at, user, status=Pending
-    Other fields: remain NULL until status is changed
-    """
+    
     if request.method == 'POST':
         # Only accept cnNumbers from user
         data = {'cnNumbers': request.data.get('cnNumbers')}

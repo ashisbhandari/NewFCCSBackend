@@ -10,6 +10,25 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 
 # Create your views here.
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def tracking_status_options(request):
+    options = [
+        {
+            'value': value,
+            'label': label
+        }
+        for value, label in ShipmentTracking.STATUS_CHOICES
+    ]
+
+    return Response(
+        {
+            'message': 'Tracking status options retrieved successfully',
+            'data': options
+        },
+        status=status.HTTP_200_OK
+    )
+
 @csrf_exempt
 @api_view(['POST'])
 
@@ -160,3 +179,82 @@ def view_tracking_history(request, identifier):
         },
         status=status.HTTP_200_OK
     )
+    
+    
+# update tracking history by tracking id
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_tracking(request, tracking_id):
+    try:
+        tracking = ShipmentTracking.objects.select_related('shipment__receiver', 'shipment__sender').get(id=tracking_id)
+    except ShipmentTracking.DoesNotExist:
+        return Response(
+            {
+                'message': 'Tracking record not found'
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    if request.method == 'PUT':
+        tracking_data = request.data.copy()
+
+        # Optional contact details to update on receiver (fallback sender)
+        contact_name = tracking_data.get('name')
+        contact_number = tracking_data.get('number') or tracking_data.get('contact_number')
+
+        if 'name' in tracking_data:
+            tracking_data.pop('name')
+        if 'number' in tracking_data:
+            tracking_data.pop('number')
+        if 'contact_number' in tracking_data:
+            tracking_data.pop('contact_number')
+        
+        # Set updated_by from authenticated user if not provided
+        if not tracking_data.get('updated_by'):
+            tracking_data['updated_by'] = request.user.companyName if hasattr(request.user, 'companyName') else request.user.email
+        
+        serializer = ShipmentTrackingSerializer(tracking, data=tracking_data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+
+            shipment = tracking.shipment
+            receiver = getattr(shipment, 'receiver', None)
+            sender = getattr(shipment, 'sender', None)
+            contact_target = receiver or sender
+
+            if contact_target and (contact_name or contact_number):
+                update_fields = []
+                if contact_name:
+                    contact_target.name = contact_name
+                    update_fields.append('name')
+                if contact_number:
+                    contact_target.phone = contact_number
+                    update_fields.append('phone')
+                if update_fields:
+                    contact_target.save(update_fields=update_fields)
+
+            response_name = ''
+            response_number = ''
+            if receiver:
+                response_name = receiver.name or ''
+                response_number = receiver.phone or ''
+            elif sender:
+                response_name = sender.name or ''
+                response_number = sender.phone or ''
+
+            return Response(
+                {
+                    'message': 'Tracking update modified successfully!',
+                    'name': response_name,
+                    'number': response_number,
+                    'data': serializer.data
+                },
+                status=status.HTTP_200_OK
+            )
+        return Response(
+            {
+                'message': 'Failed to modify tracking update',
+                'errors': serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
