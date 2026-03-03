@@ -183,7 +183,7 @@ def view_tracking_history(request, identifier):
     
 # update tracking history by tracking id
 @api_view(['PUT'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def update_tracking(request, identifier):
     tracking = None
 
