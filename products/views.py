@@ -125,27 +125,7 @@ def add_tracking_update(request, product_id):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        status_value = request.data.get('status')
-        if not status_value:
-            return Response(
-                {
-                    'message': 'Status is required'
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Accept flexible frontend payload and map only valid fields for serializer
-        tracking_data = {
-            'status': status_value,
-            'location': request.data.get('location') or request.data.get('contact') or '',
-            'updated_by': request.data.get('updated_by') or request.data.get('name'),
-            'remarks': (
-                request.data.get('remarks')
-                or request.data.get('message')
-                or request.data.get('reason')
-                or request.data.get('cancellationReason')
-            )
-        }
+        tracking_data = request.data.copy()
 
         # Set updated_by from authenticated user
         updated_by = tracking_data.get('updated_by')
@@ -156,6 +136,10 @@ def add_tracking_update(request, product_id):
         # Auto-fill location from shipment origin if not provided
         if not tracking_data.get('location'):
             tracking_data['location'] = shipment.origin if shipment.origin else ''
+
+        # Support either remarks or message in request payload
+        if not tracking_data.get('remarks') and tracking_data.get('message'):
+            tracking_data['remarks'] = tracking_data.get('message')
 
         # Auto-generate remarks if none is provided
         if not tracking_data.get('remarks'):
@@ -254,8 +238,7 @@ def cancel_tracking(request, identifier):
         )
 
     new_status = request.data.get('status', 'Cancelled')
-    normalized_status = str(new_status).strip().lower()
-    if normalized_status != 'cancelled':
+    if new_status != 'Cancelled':
         return Response(
             {
                 'message': 'Only status update to "Cancelled" is allowed'
@@ -263,17 +246,12 @@ def cancel_tracking(request, identifier):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    updated_by = request.data.get('updated_by') or request.data.get('name')
+    updated_by = request.data.get('updated_by')
     if not updated_by:
         updated_by = request.user.companyName if hasattr(request.user, 'companyName') and request.user.companyName else request.user.email
 
-    location = request.data.get('location') or request.data.get('contact') or (shipment.origin if shipment.origin else '')
-    remarks = (
-        request.data.get('remarks')
-        or request.data.get('message')
-        or request.data.get('reason')
-        or request.data.get('cancellationReason')
-    )
+    location = request.data.get('location') or (shipment.origin if shipment.origin else '')
+    remarks = request.data.get('remarks') or request.data.get('message')
     if not remarks:
         remarks = generate_tracking_remarks('Cancelled', location, updated_by or 'System')
 
