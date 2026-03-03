@@ -6,6 +6,7 @@ from .serializers import ShipmentSerializer, ShipmentTrackingSerializer
 from .models import Shipment, ShipmentTracking
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from manifest.tracking_helper import generate_tracking_remarks
 
 
 # Create your views here.
@@ -115,26 +116,52 @@ def add_tracking_update(request, product_id):
         )
     
     if request.method == 'POST':
+        latest_tracking = ShipmentTracking.objects.filter(shipment=shipment).order_by('-timestamp').first()
+        if latest_tracking and latest_tracking.status == 'Cancelled':
+            return Response(
+                {
+                    'message': 'Shipment is already cancelled. No further tracking updates are allowed.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         tracking_data = request.data.copy()
-        tracking_data['shipment'] = shipment.id
-        
-        # Auto-fill origin and destination from shipment if not provided
-        if not tracking_data.get('origin'):
-            tracking_data['origin'] = shipment.origin if shipment.origin else ''
-        if not tracking_data.get('destination'):
-            tracking_data['destination'] = shipment.destination_district if shipment.destination_district else ''
-        
+
         # Set updated_by from authenticated user
-        if not tracking_data.get('updated_by'):
-            tracking_data['updated_by'] = request.user.companyName if hasattr(request.user, 'companyName') else request.user.email
-        
+        updated_by = tracking_data.get('updated_by')
+        if not updated_by:
+            updated_by = request.user.companyName if hasattr(request.user, 'companyName') and request.user.companyName else request.user.email
+            tracking_data['updated_by'] = updated_by
+
+        # Auto-fill location from shipment origin if not provided
+        if not tracking_data.get('location'):
+            tracking_data['location'] = shipment.origin if shipment.origin else ''
+
+        # Support either remarks or message in request payload
+        if not tracking_data.get('remarks') and tracking_data.get('message'):
+            tracking_data['remarks'] = tracking_data.get('message')
+
+        # Auto-generate remarks if none is provided
+        if not tracking_data.get('remarks'):
+            tracking_data['remarks'] = generate_tracking_remarks(
+                tracking_data.get('status', ''),
+                tracking_data.get('location', ''),
+                updated_by or 'System'
+            )
+
         serializer = ShipmentTrackingSerializer(data=tracking_data)
         if serializer.is_valid():
-            serializer.save(shipment=shipment)
+            tracking_record = serializer.save(
+                shipment=shipment,
+                origin=shipment.origin if shipment.origin else '',
+                destination=shipment.destination_district if shipment.destination_district else ''
+            )
+
+            response_serializer = ShipmentTrackingSerializer(tracking_record)
             return Response(
                 {
                     'message': 'Tracking update added successfully!',
-                    'data': serializer.data
+                    'data': response_serializer.data
                 },
                 status=status.HTTP_201_CREATED
             )
@@ -181,88 +208,67 @@ def view_tracking_history(request, identifier):
     )
     
     
-# update tracking history by tracking id
-@api_view(['PUT'])
-@permission_classes([AllowAny])
-def update_tracking(request, identifier):
-    tracking = None
+# CANCEL A SHIPMENT (soft delete by setting status to 'Cancelled') AND MAKE THE UPDATE DISABLE FOR FURTHER TRACKING UPDATES
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def cancel_tracking(request, identifier):
+    shipment = None
 
     if identifier.isdigit():
-        tracking = ShipmentTracking.objects.select_related('shipment__receiver', 'shipment__sender').filter(id=int(identifier)).first()
+        shipment = Shipment.objects.filter(pk=int(identifier)).first()
 
-    if tracking is None:
-        shipment = Shipment.objects.select_related('receiver', 'sender').filter(product_id=identifier).first()
-        if shipment:
-            tracking = ShipmentTracking.objects.select_related('shipment__receiver', 'shipment__sender').filter(shipment=shipment).order_by('-timestamp').first()
+    if shipment is None:
+        shipment = Shipment.objects.filter(product_id=identifier).first()
 
-    if tracking is None:
+    if shipment is None:
         return Response(
             {
-                'message': 'Tracking record not found'
+                'message': 'Shipment not found'
             },
             status=status.HTTP_404_NOT_FOUND
         )
-    
-    if request.method == 'PUT':
-        tracking_data = request.data.copy()
 
-        # Optional contact details to update on receiver (fallback sender)
-        contact_name = tracking_data.get('name')
-        contact_number = tracking_data.get('number') or tracking_data.get('contact_number')
-
-        if 'name' in tracking_data:
-            tracking_data.pop('name')
-        if 'number' in tracking_data:
-            tracking_data.pop('number')
-        if 'contact_number' in tracking_data:
-            tracking_data.pop('contact_number')
-        
-        # Set updated_by from authenticated user if not provided
-        if not tracking_data.get('updated_by'):
-            tracking_data['updated_by'] = request.user.companyName if hasattr(request.user, 'companyName') else request.user.email
-        
-        serializer = ShipmentTrackingSerializer(tracking, data=tracking_data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-
-            shipment = tracking.shipment
-            receiver = getattr(shipment, 'receiver', None)
-            sender = getattr(shipment, 'sender', None)
-            contact_target = receiver or sender
-
-            if contact_target and (contact_name or contact_number):
-                update_fields = []
-                if contact_name:
-                    contact_target.name = contact_name
-                    update_fields.append('name')
-                if contact_number:
-                    contact_target.phone = contact_number
-                    update_fields.append('phone')
-                if update_fields:
-                    contact_target.save(update_fields=update_fields)
-
-            response_name = ''
-            response_number = ''
-            if receiver:
-                response_name = receiver.name or ''
-                response_number = receiver.phone or ''
-            elif sender:
-                response_name = sender.name or ''
-                response_number = sender.phone or ''
-
-            return Response(
-                {
-                    'message': 'Tracking update modified successfully!',
-                    'name': response_name,
-                    'number': response_number,
-                    'data': serializer.data
-                },
-                status=status.HTTP_200_OK
-            )
+    latest_tracking = ShipmentTracking.objects.filter(shipment=shipment).order_by('-timestamp').first()
+    if latest_tracking and latest_tracking.status == 'Cancelled':
         return Response(
             {
-                'message': 'Failed to modify tracking update',
-                'errors': serializer.errors
+                'message': 'Shipment is already cancelled.'
             },
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    new_status = request.data.get('status', 'Cancelled')
+    if new_status != 'Cancelled':
+        return Response(
+            {
+                'message': 'Only status update to "Cancelled" is allowed'
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    updated_by = request.data.get('updated_by')
+    if not updated_by:
+        updated_by = request.user.companyName if hasattr(request.user, 'companyName') and request.user.companyName else request.user.email
+
+    location = request.data.get('location') or (shipment.origin if shipment.origin else '')
+    remarks = request.data.get('remarks') or request.data.get('message')
+    if not remarks:
+        remarks = generate_tracking_remarks('Cancelled', location, updated_by or 'System')
+
+    tracking = ShipmentTracking.objects.create(
+        shipment=shipment,
+        status='Cancelled',
+        location=location,
+        origin=shipment.origin if shipment.origin else '',
+        destination=shipment.destination_district if shipment.destination_district else '',
+        remarks=remarks,
+        updated_by=updated_by
+    )
+
+    return Response(
+        {
+            'message': 'Shipment cancelled successfully!',
+            'data': ShipmentTrackingSerializer(tracking).data
+        },
+        status=status.HTTP_200_OK
+    )
