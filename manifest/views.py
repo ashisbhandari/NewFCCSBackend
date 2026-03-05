@@ -265,12 +265,13 @@ def view_manifest_cn_numbers(request, manifest_no):
     if request.method == 'GET':
         cn_numbers = []
         manifest_status = manifest.status
+        manifest_user=manifest.user
         if manifest.cnNumbers:
             cn_numbers.extend([cn.strip() for cn in manifest.cnNumbers.split(',') if cn.strip()])
         
         return Response(
             {
-                'message': 'CN numbers retrieved successfully!',
+                'user': manifest_user,
                 'data': cn_numbers,
                 'status': manifest_status
             },
