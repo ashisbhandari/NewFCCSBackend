@@ -11,6 +11,12 @@ from manifest.tracking_helper import generate_tracking_remarks
 
 # Create your views here.
 
+def home(request):
+    data = {
+        "message": "Welcome to the FCCS Product Page, Server is running smoothly!"
+    }
+    return render(request, 'home.html', data)
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def tracking_status_options(request):

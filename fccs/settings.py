@@ -102,13 +102,14 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r'^http://localhost(:\d+)?$',
     r'^http://127\.0\.0\.1(:\d+)?$',
     r'^http://\[::1\](:\d+)?$',
+    
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost',
     'http://127.0.0.1',
     'http://[::1]',
-    'https://fccs.onrender.com',
+    
 ]
 CORS_ALLOW_ALL_ORIGINS = True
 

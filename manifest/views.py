@@ -1,4 +1,5 @@
 from django.http import JsonResponse
+from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -11,14 +12,18 @@ from .tracking_helper import create_manifest_tracking_records, create_initial_tr
 
 # Create your views here.
 
+# def home(request):
+#     data = {
+#         "message": "Server is active",
+#         "status": "success",
+#         "user": "dashboard_invoice"
+#     }
+#     return JsonResponse(data)
 def home(request):
     data = {
-        "message": "Serveer is active",
-        "status": "success",
-        "user": "dashboard_invoice"
+        "message": "Welcome to the FCCS Manifest Page, Server is running smoothly!"
     }
-    return JsonResponse(data)
-
+    return render(request, 'home.html', data)
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
