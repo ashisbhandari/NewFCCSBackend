@@ -1,4 +1,5 @@
 from django.http import JsonResponse
+from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 import json
 from .models import User
@@ -11,13 +12,11 @@ from rest_framework import status
 # Create your views here.
 
 # default user function view
-def user_dashboard(request):
+def home(request):
     data = {
-        "message": "hello user page is active",
-        "status": "success",
-        "user": "dashboard_user"
+        "message": "Welcome to the FCCS user Page, Server is running smoothly!"
     }
-    return JsonResponse(data)
+    return render(request, 'home.html', data)
 
 
 
