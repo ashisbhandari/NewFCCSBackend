@@ -82,46 +82,89 @@ def View_Product(request):
     serializer = ShipmentSerializer(shipments, many=True)
     return Response(serializer.data)
 
-@permission_classes([IsAuthenticated])
 @api_view(['PUT'])
+@permission_classes([IsAuthenticated])
 def update_product(request, product_id):
+
     try:
-        shipment = Shipment.objects.get(product_id=product_id)
+        try:
+            shipment = Shipment.objects.get(product_id=product_id)
+        except Shipment.DoesNotExist:
+            if product_id.isdigit():
+                shipment = Shipment.objects.get(pk=int(product_id))
+            else:
+                raise
+        
     except Shipment.DoesNotExist:
         return Response(
-            {
-                'message': 'Product not found'
-            },
+            {"message": "Product not found"},
             status=status.HTTP_404_NOT_FOUND
         )
-    
-    if request.method == 'PUT':
-        serializer = ShipmentSerializer(shipment, data=request.data, partial=True, context={'request': request})
-        if serializer.is_valid():
-            updated_shipment = serializer.save()
-            # Re-fetch with related data to get sender/receiver in response
-            updated_shipment = Shipment.objects.select_related('sender', 'receiver', 'user').prefetch_related('pieces_detail', 'tracking_history').get(pk=updated_shipment.pk)
-            response_serializer = ShipmentSerializer(updated_shipment)
-            return Response(
-                {
-                    'message': 'Product updated successfully!',
-                    'data': response_serializer.data
-                },
-                status=status.HTTP_200_OK
-            )
+
+    serializer = ShipmentSerializer(
+        shipment,
+        data=request.data,
+        partial=True,
+        context={"request": request}
+    )
+
+    if serializer.is_valid():
+        serializer.save()
         return Response(
             {
-                'message': 'Failed to update product',
-                'errors': serializer.errors
+                "message": "Updated Successfully",
+                "data": serializer.data
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_200_OK
         )
+
+    print(serializer.errors)
+
     return Response(
         {
-            'message': 'Only PUT method is allowed'
+            "message": "Validation Error",
+            "errors": serializer.errors
         },
-        status=status.HTTP_405_METHOD_NOT_ALLOWED
+        status=status.HTTP_400_BAD_REQUEST
     )
+# def update_product(request, product_id):
+#     try:
+#         shipment = Shipment.objects.get(product_id=product_id)
+#     except Shipment.DoesNotExist:
+#         return Response(
+#             {
+#                 'message': 'Product not found'
+#             },
+#             status=status.HTTP_404_NOT_FOUND
+#         )
+    
+#     if request.method == 'PUT':
+#         serializer = ShipmentSerializer(shipment, data=request.data, partial=True, context={'request': request})
+#         if serializer.is_valid():
+#             updated_shipment = serializer.save()
+#             # Re-fetch with related data to get sender/receiver in response
+#             updated_shipment = Shipment.objects.select_related('sender', 'receiver', 'user').prefetch_related('pieces_detail', 'tracking_history').get(pk=updated_shipment.pk)
+#             response_serializer = ShipmentSerializer(updated_shipment)
+#             return Response(
+#                 {
+#                     'message': 'Product updated successfully!',
+#                     'data': response_serializer.data
+#                 },
+#                 status=status.HTTP_200_OK
+#             )
+#         return Response(
+#             {
+#                 'message': 'Failed to update product',
+#                 'errors': serializer.errors
+#             },
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+#     return Response(
+#         {
+#             'message': 'Only PUT method is allowed'
+#         },
+#         status=status.HTTP_405_METHOD_NOT_ALLOWED
+#     )
     
 
 # view a single product detail using product id
