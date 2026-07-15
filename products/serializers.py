@@ -49,7 +49,11 @@ class ShipmentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def validate_product_id(self, value):
-        if Shipment.objects.filter(product_id=value).exists():
+        queryset = Shipment.objects.filter(product_id=value)
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+
+        if queryset.exists():
             raise serializers.ValidationError('Product ID already exists.')
         return value
 
@@ -100,3 +104,40 @@ class ShipmentSerializer(serializers.ModelSerializer):
 
         
         return shipment
+
+    def update(self, instance, validated_data):
+        sender_data = validated_data.pop('sender', None)
+        receiver_data = validated_data.pop('receiver', None)
+        pieces_data = validated_data.pop('pieces_detail', None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+
+        if sender_data is not None:
+            try:
+                sender = instance.sender
+            except Sender.DoesNotExist:
+                Sender.objects.create(shipment=instance, **sender_data)
+            else:
+                for attr, value in sender_data.items():
+                    setattr(sender, attr, value)
+                sender.save()
+
+        if receiver_data is not None:
+            try:
+                receiver = instance.receiver
+            except Receiver.DoesNotExist:
+                Receiver.objects.create(shipment=instance, **receiver_data)
+            else:
+                for attr, value in receiver_data.items():
+                    setattr(receiver, attr, value)
+                receiver.save()
+
+        if pieces_data is not None:
+            instance.pieces_detail.all().delete()
+            for piece in pieces_data:
+                ShipmentPiece.objects.create(shipment=instance, **piece)
+
+        return instance
