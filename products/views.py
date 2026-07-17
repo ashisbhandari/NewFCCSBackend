@@ -90,7 +90,7 @@ def update_product(request, product_id):
         try:
             shipment = Shipment.objects.get(product_id=product_id)
         except Shipment.DoesNotExist:
-            if product_id.isdigit():
+            if product_id.isdigit() :
                 shipment = Shipment.objects.get(pk=int(product_id))
             else:
                 raise
